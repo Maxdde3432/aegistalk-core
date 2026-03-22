@@ -1,0 +1,39 @@
+{
+  "name": "aegistalk-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "heic2any": "^0.0.4",
+    "iconv-lite": "^0.7.2",
+    "lucide-react": "^0.575.0",
+    "peerjs": "^1.5.5",
+    "playwright-chromium": "^1.41.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^6.21.0",
+    "remark-gfm": "^4.0.1",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1",
+    "webrtc-adapter": "^9.0.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1",
+    "terser": "^5.46.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.0.10"
+  }
+}

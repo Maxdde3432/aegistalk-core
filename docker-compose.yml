@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aegistalk-public-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aegistalk
+      POSTGRES_USER: aegistalk
+      POSTGRES_PASSWORD: changeme_secure_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - aegistalk_public_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegistalk -d aegistalk"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  aegistalk_public_postgres_data:
