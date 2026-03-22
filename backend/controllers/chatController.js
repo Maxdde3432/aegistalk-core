@@ -87,9 +87,9 @@ export const ensureBotChat = async (userId) => {
     const encryptedMessage = Buffer.from(welcomeMessage).toString('base64');
 
     await query(
-      `INSERT INTO messages (id, chat_id, sender_id, message_type, content_encrypted, nonce, sender_public_key, signature, status, created_at)
-       VALUES ($1, $2, $3, 'text', $4, '', '', '', 'delivered', NOW())`,
-      [uuidv4(), chatId, BOT_ID, encryptedMessage]
+      `INSERT INTO messages (id, chat_id, sender_id, content, message_type, content_encrypted, nonce, sender_public_key, signature, status, created_at)
+       VALUES ($1, $2, $3, $4, 'text', $5, '', '', '', 'delivered', NOW())`,
+      [uuidv4(), chatId, BOT_ID, welcomeMessage, encryptedMessage]
     );
 
     await query(`UPDATE chats SET last_message_at = NOW() WHERE id = $1`, [chatId]);
@@ -133,9 +133,9 @@ export const ensureFavoritesChat = async (userId) => {
     const encryptedMessage = Buffer.from(welcomeMessage).toString('base64');
 
     await query(
-      `INSERT INTO messages (id, chat_id, sender_id, message_type, content_encrypted, nonce, sender_public_key, signature, status, created_at)
-       VALUES ($1, $2, $3, 'text', $4, '', '', '', 'delivered', NOW())`,
-      [uuidv4(), chatId, userId, encryptedMessage]
+      `INSERT INTO messages (id, chat_id, sender_id, content, message_type, content_encrypted, nonce, sender_public_key, signature, status, created_at)
+       VALUES ($1, $2, $3, $4, 'text', $5, '', '', '', 'delivered', NOW())`,
+      [uuidv4(), chatId, userId, welcomeMessage, encryptedMessage]
     );
 
     await query(`UPDATE chats SET last_message_at = NOW() WHERE id = $1`, [chatId]);

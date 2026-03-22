@@ -73,12 +73,8 @@ const __dirname = path.dirname(__filename);
 // Database Migrations
 // ============================================================================
 const migrationsDir = path.join(__dirname, 'db', 'migrations');
-const baseSchemaPath = path.join(__dirname, 'db', 'init.sql');
-const baseMigrationsIncludedInInit = new Set([
-  '000_create_users.sql',
-  '002_message_reactions.sql',
-  '20260321_create_contacts_table.sql'
-]);
+const baseSchemaPath = path.join(migrationsDir, '999_full_schema.sql');
+const baseMigrationsIncludedInInit = new Set();
 
 const ensureMigrationTable = async () => {
   await pool.query(`
@@ -108,14 +104,25 @@ const bootstrapBaseSchemaIfNeeded = async () => {
 
   await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
   await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
-  const baseSchemaSql = fs.readFileSync(baseSchemaPath, 'utf8');
+  const fullBaseSchemaSql = fs.readFileSync(baseSchemaPath, 'utf8');
+  const baseSchemaSql = fullBaseSchemaSql.split('-- BOT (Aegis Bot)')[0];
   await pool.query(baseSchemaSql);
+  await pool.query(`
+    ALTER TABLE messages
+      ADD COLUMN IF NOT EXISTS media_url TEXT,
+      ADD COLUMN IF NOT EXISTS media_thumbnail_url TEXT,
+      ADD COLUMN IF NOT EXISTS media_mime_type VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS media_size_bytes BIGINT,
+      ADD COLUMN IF NOT EXISTS is_edited BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP
+  `);
 
   for (const filename of baseMigrationsIncludedInInit) {
     await markMigrationApplied(filename);
   }
 
-  console.log('[Migrations] Base schema bootstrapped from db/init.sql');
+  console.log('[Migrations] Base schema bootstrapped from db/migrations/999_full_schema.sql');
   return true;
 };
 
