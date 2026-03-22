@@ -126,6 +126,25 @@ const bootstrapBaseSchemaIfNeeded = async () => {
   return true;
 };
 
+const ensureRuntimeCompatSchema = async () => {
+  await pool.query(`
+    ALTER TABLE messages
+      ADD COLUMN IF NOT EXISTS media_url TEXT,
+      ADD COLUMN IF NOT EXISTS media_thumbnail_url TEXT,
+      ADD COLUMN IF NOT EXISTS media_mime_type VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS media_size_bytes BIGINT,
+      ADD COLUMN IF NOT EXISTS is_edited BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP
+  `);
+
+  await pool.query(`
+    ALTER TABLE sessions
+      ADD COLUMN IF NOT EXISTS ip_address INET,
+      ADD COLUMN IF NOT EXISTS user_agent TEXT
+  `);
+};
+
 const runMigrations = async () => {
   try {
     if (!fs.existsSync(migrationsDir)) {
@@ -135,6 +154,7 @@ const runMigrations = async () => {
 
     await ensureMigrationTable();
     await bootstrapBaseSchemaIfNeeded();
+    await ensureRuntimeCompatSchema();
 
     const appliedRows = await pool.query(`SELECT filename FROM schema_migrations`);
     const applied = new Set(appliedRows.rows.map((row) => row.filename));
@@ -608,7 +628,7 @@ app.use(cors({
   origin: true, // Allow all origins (Railway handles this)
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Timezone']
 }));
 
 // Rate limiting

@@ -28,7 +28,6 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 
-
 const redactBody = (body = {}) => {
   const hidden = new Set([
     'password',
@@ -66,7 +65,7 @@ const refreshLimiter = rateLimit({
   message: { error: '\u0421\u043b\u0438\u0448\u043a\u043e\u043c \u043c\u043d\u043e\u0433\u043e \u0437\u0430\u043f\u0440\u043e\u0441\u043e\u0432 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f \u0441\u0435\u0441\u0441\u0438\u0438. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435.' }
 });
 
-// Middleware для валидации ошибок
+// Middleware РґР»СЏ РІР°Р»РёРґР°С†РёРё РѕС€РёР±РѕРє
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -76,8 +75,8 @@ const validate = (req, res, next) => {
       errors: errors.array()
     });
     return res.status(400).json({
-      error: 'Ошибка валидации',
-      details: errors.array().map(e => ({ field: e.path, message: e.msg }))
+      error: 'РћС€РёР±РєР° РІР°Р»РёРґР°С†РёРё',
+      details: errors.array().map((e) => ({ field: e.path, message: e.msg }))
     });
   }
   next();
@@ -92,61 +91,75 @@ router.get('/callback/google', handleGoogleCallback);
 router.get('/register/check-email', checkRegistrationEmail);
 router.get('/register/check-username', checkRegistrationUsername);
 
-// Регистрация - Шаг 1: Создание пользователя
+// Р РµРіРёСЃС‚СЂР°С†РёСЏ - РЁР°Рі 1: РЎРѕР·РґР°РЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 router.post('/register', authBurstLimiter, [
-  body('email').isEmail().normalizeEmail().withMessage('Неверный формат email'),
-  body('username').optional().isString().trim().isLength({ min: 3, max: 50 }).withMessage('Имя пользователя должно быть от 3 до 50 символов'),
-  body('password').isString().isLength({ min: 8, max: 128 }).withMessage('Пароль должен быть от 8 до 128 символов'),
-  body('firstName').optional().isString().trim().isLength({ max: 100 }).withMessage('Имя должно быть не более 100 символов'),
-  body('lastName').optional({ nullable: true, checkFalsy: true }).isString().trim().isLength({ max: 100 }).withMessage('Фамилия должна быть не более 100 символов'),
-  body('publicKey').isString().notEmpty().withMessage('Требуется публичный ключ'),
-  body('publicKeySignature').isString().notEmpty().withMessage('Требуется подпись публичного ключа'),
+  body('email').isEmail().normalizeEmail().withMessage('РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ email'),
+  body('username').optional().isString().trim().isLength({ min: 3, max: 50 }).withMessage('РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РѕС‚ 3 РґРѕ 50 СЃРёРјРІРѕР»РѕРІ'),
+  body('password').isString().isLength({ min: 8, max: 128 }).withMessage('РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РѕС‚ 8 РґРѕ 128 СЃРёРјРІРѕР»РѕРІ'),
+  body('firstName').optional().isString().trim().isLength({ max: 100 }).withMessage('РРјСЏ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РЅРµ Р±РѕР»РµРµ 100 СЃРёРјРІРѕР»РѕРІ'),
+  body('lastName').optional({ nullable: true, checkFalsy: true }).isString().trim().isLength({ max: 100 }).withMessage('Р¤Р°РјРёР»РёСЏ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РЅРµ Р±РѕР»РµРµ 100 СЃРёРјРІРѕР»РѕРІ'),
+  body('publicKey').isString().notEmpty().withMessage('РўСЂРµР±СѓРµС‚СЃСЏ РїСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡'),
+  body('publicKeySignature').isString().notEmpty().withMessage('РўСЂРµР±СѓРµС‚СЃСЏ РїРѕРґРїРёСЃСЊ РїСѓР±Р»РёС‡РЅРѕРіРѕ РєР»СЋС‡Р°'),
   validate
 ], register);
 
-// Подтверждение email - Шаг 2: Ввод кода и создание пользователя
+// РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ email - РЁР°Рі 2: Р’РІРѕРґ РєРѕРґР° Рё СЃРѕР·РґР°РЅРёРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 router.post('/verify-email', authBurstLimiter, [
-  body('code').isString().isLength({ min: 6, max: 6 }).withMessage('Код должен состоять из 6 цифр'),
-  body('tempDataToken').isString().notEmpty().withMessage('Требуется токен данных'),
+  body('code').isString().isLength({ min: 6, max: 6 }).withMessage('РљРѕРґ РґРѕР»Р¶РµРЅ СЃРѕСЃС‚РѕСЏС‚СЊ РёР· 6 С†РёС„СЂ'),
+  body('tempDataToken').isString().notEmpty().withMessage('РўСЂРµР±СѓРµС‚СЃСЏ С‚РѕРєРµРЅ РґР°РЅРЅС‹С…'),
   validate
 ], verifyEmail);
 
-// Повторная отправка кода
+// РџРѕРІС‚РѕСЂРЅР°СЏ РѕС‚РїСЂР°РІРєР° РєРѕРґР°
 router.post('/resend-code', authBurstLimiter, [
-  body('email').isEmail().normalizeEmail().withMessage('Неверный формат email'),
+  body('email').isEmail().normalizeEmail().withMessage('РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ email'),
   validate
 ], resendCode);
 
-// Вход
+// Р’С…РѕРґ
 router.post('/login', authBurstLimiter, [
+  body('phone').optional().isString().trim(),
   body('email').optional().isEmail().normalizeEmail(),
   body('username').optional().isString().trim(),
-  body('password').isString().notEmpty().withMessage('Требуется пароль'),
+  body().custom((value) => {
+    const hasIdentifier = Boolean(
+      String(value?.phone || '').trim() ||
+      String(value?.email || '').trim() ||
+      String(value?.username || '').trim()
+    );
+
+    if (!hasIdentifier) {
+      throw new Error('РўСЂРµР±СѓРµС‚СЃСЏ С‚РµР»РµС„РѕРЅ, email РёР»Рё РёРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ');
+    }
+
+    return true;
+  }),
+  body('password').isString().trim().notEmpty().withMessage('РўСЂРµР±СѓРµС‚СЃСЏ РїР°СЂРѕР»СЊ'),
   validate
 ], login);
 
-// Подтверждение кода входа
+// РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РєРѕРґР° РІС…РѕРґР°
 router.post('/verify-login-code', authBurstLimiter, [
-  body('code').isString().isLength({ min: 6, max: 6 }).withMessage('Код должен состоять из 6 цифр'),
-  body('loginTempToken').isString().notEmpty().withMessage('Требуется токен входа'),
+  body('code').isString().isLength({ min: 6, max: 6 }).withMessage('РљРѕРґ РґРѕР»Р¶РµРЅ СЃРѕСЃС‚РѕСЏС‚СЊ РёР· 6 С†РёС„СЂ'),
+  body('loginTempToken').isString().notEmpty().withMessage('РўСЂРµР±СѓРµС‚СЃСЏ С‚РѕРєРµРЅ РІС…РѕРґР°'),
   validate
 ], verifyLoginCode);
 
-// Повторная отправка кода входа
+// РџРѕРІС‚РѕСЂРЅР°СЏ РѕС‚РїСЂР°РІРєР° РєРѕРґР° РІС…РѕРґР°
 router.post('/resend-login-code', authBurstLimiter, [
-  body('loginTempToken').isString().notEmpty().withMessage('Требуется токен входа'),
+  body('loginTempToken').isString().notEmpty().withMessage('РўСЂРµР±СѓРµС‚СЃСЏ С‚РѕРєРµРЅ РІС…РѕРґР°'),
   validate
 ], resendLoginCode);
 
-// Обновление токена
+// РћР±РЅРѕРІР»РµРЅРёРµ С‚РѕРєРµРЅР°
 router.post('/refresh', refreshLimiter, [
-  body('refreshToken').isString().notEmpty().withMessage('Требуется refresh токен'),
+  body('refreshToken').isString().notEmpty().withMessage('РўСЂРµР±СѓРµС‚СЃСЏ refresh С‚РѕРєРµРЅ'),
   validate
 ], refreshToken);
 
-// Выход
+// Р’С‹С…РѕРґ
 router.post('/logout', refreshLimiter, [
-  body('refreshToken').isString().notEmpty().withMessage('Требуется refresh токен'),
+  body('refreshToken').isString().notEmpty().withMessage('РўСЂРµР±СѓРµС‚СЃСЏ refresh С‚РѕРєРµРЅ'),
   validate
 ], logout);
 
@@ -154,7 +167,7 @@ router.post('/logout', refreshLimiter, [
 // PROTECTED ROUTES
 // ============================================================================
 
-// Получить данные текущего пользователя
+// РџРѕР»СѓС‡РёС‚СЊ РґР°РЅРЅС‹Рµ С‚РµРєСѓС‰РµРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
 router.get('/me', authenticate, getMe);
 
 // ============================================================================
@@ -162,34 +175,34 @@ router.get('/me', authenticate, getMe);
 // ============================================================================
 router.get('/sessions', authenticate, getSessions);
 router.post('/fcm-token', authenticate, [
-  body('fcmToken').isString().trim().notEmpty().withMessage('Требуется FCM токен'),
+  body('fcmToken').isString().trim().notEmpty().withMessage('РўСЂРµР±СѓРµС‚СЃСЏ FCM С‚РѕРєРµРЅ'),
   validate
 ], saveFcmToken);
 
 router.delete('/sessions/:sessionId', authenticate, [
-  param('sessionId').isUUID().withMessage('Неверный формат sessionId'),
+  param('sessionId').isUUID().withMessage('РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ sessionId'),
   validate
 ], terminateSession);
 
 router.post('/sessions/terminate-others', authenticate, terminateOtherSessions);
 
-// Запрос на смену пароля
+// Р—Р°РїСЂРѕСЃ РЅР° СЃРјРµРЅСѓ РїР°СЂРѕР»СЏ
 router.post('/password/change-request', authenticate, [
-  body('oldPassword').isString().isLength({ min: 8, max: 128 }).withMessage('Текущий пароль обязателен'),
+  body('oldPassword').isString().isLength({ min: 8, max: 128 }).withMessage('РўРµРєСѓС‰РёР№ РїР°СЂРѕР»СЊ РѕР±СЏР·Р°С‚РµР»РµРЅ'),
   validate
 ], requestPasswordChange);
 
-// Подтверждение смены пароля
+// РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ СЃРјРµРЅС‹ РїР°СЂРѕР»СЏ
 router.post('/password/change-confirm', authenticate, [
-  body('code').isString().isLength({ min: 4, max: 10 }).withMessage('Неверный формат кода'),
-  body('newPassword').isString().isLength({ min: 8, max: 128 }).withMessage('Пароль должен быть от 8 до 128 символов'),
-  body('passwordChangeToken').isString().notEmpty().withMessage('Отсутствует токен смены пароля'),
+  body('code').isString().isLength({ min: 4, max: 10 }).withMessage('РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РєРѕРґР°'),
+  body('newPassword').isString().isLength({ min: 8, max: 128 }).withMessage('РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РѕС‚ 8 РґРѕ 128 СЃРёРјРІРѕР»РѕРІ'),
+  body('passwordChangeToken').isString().notEmpty().withMessage('РћС‚СЃСѓС‚СЃС‚РІСѓРµС‚ С‚РѕРєРµРЅ СЃРјРµРЅС‹ РїР°СЂРѕР»СЏ'),
   validate
 ], confirmPasswordChange);
 
 router.post('/google/setup-password', authenticate, [
-  body('password').isString().isLength({ min: 8, max: 128 }).withMessage('Пароль должен быть от 8 до 128 символов'),
-  body('googlePasswordSetupToken').isString().notEmpty().withMessage('Отсутствует setup token'),
+  body('password').isString().isLength({ min: 8, max: 128 }).withMessage('РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РѕС‚ 8 РґРѕ 128 СЃРёРјРІРѕР»РѕРІ'),
+  body('googlePasswordSetupToken').isString().notEmpty().withMessage('РћС‚СЃСѓС‚СЃС‚РІСѓРµС‚ setup token'),
   validate
 ], setupGooglePassword);
 

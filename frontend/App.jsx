@@ -741,14 +741,28 @@ const LoginPage = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    const normalizedLoginId = String(loginId || '').trim()
+    const normalizedPassword = String(password || '')
+
+    if (!normalizedLoginId) {
+      setError('Введите телефон, email или имя пользователя')
+      return
+    }
+
+    if (!normalizedPassword.trim()) {
+      setError('Введите пароль')
+      return
+    }
+
     setLoading(true)
 
     try {
       const credentials = {
-        password,
-        ...(loginId.startsWith('+') ? { phone: loginId } : {}),
-        ...(loginId.includes('@') ? { email: loginId } : {}),
-        ...(!loginId.startsWith('+') && !loginId.includes('@') ? { username: loginId } : {})
+        password: normalizedPassword,
+        ...(normalizedLoginId.startsWith('+') ? { phone: normalizedLoginId } : {}),
+        ...(normalizedLoginId.includes('@') ? { email: normalizedLoginId } : {}),
+        ...(!normalizedLoginId.startsWith('+') && !normalizedLoginId.includes('@') ? { username: normalizedLoginId } : {})
       }
 
       const result = await authAPI.login(credentials)

@@ -1172,16 +1172,21 @@ export const resendCode = async (req, res) => {
 // ============================================================================
 export const login = async (req, res) => {
   try {
-    const { phone, email, username, password } = req.body;
+    const phone = String(req.body?.phone || '').trim();
+    const email = normalizeEmail(req.body?.email || '');
+    const username = normalizeUsername(req.body?.username || '');
+    const password = String(req.body?.password || '');
+    const authMeta = resolveSessionMeta(req);
+    const shouldSkipEmailVerification = process.env.NODE_ENV !== 'production';
 
-    // Валидация
-    if ((!phone && !email && !username) || !password) {
+    // Validation
+    if ((!phone && !email && !username) || !password.trim()) {
       return res.status(400).json({
-        error: 'Требуется телефон/email/имя пользователя и пароль'
+        error: 'Phone/email/username and password are required'
       });
     }
 
-    // Поиск пользователя - проверяем только переданные значения
+    // Build the lookup using only the identifiers that were provided
     let whereClause = '';
     const values = [];
 
@@ -1200,66 +1205,65 @@ export const login = async (req, res) => {
       whereClause += 'username = $' + values.length;
     }
 
-    values.push(password); // Для последующей проверки
-
     const result = await query(
       `SELECT id, password_hash, first_name, last_name, username, phone, email,
               public_key, is_active, two_factor_enabled
        FROM users
        WHERE ${whereClause}`,
-      values.slice(0, -1) // Все кроме пароля
+      values
     );
     const user = result.rows[0];
 
     if (!user) {
-      return res.status(401).json({ error: 'Неверные учётные данные' });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     console.log('[Auth] Login user found:', { id: user.id, username: user.username, isActive: user.is_active });
 
-    // Проверка активности
     if (!user.is_active) {
-      return res.status(403).json({ error: 'Аккаунт заблокирован' });
+      return res.status(403).json({ error: 'Account is blocked' });
     }
 
     if (!user.password_hash) {
       return res.status(400).json({
-        error: 'Этот аккаунт создан через Google. Используйте кнопку "Войти через Google".'
+        error: 'This account was created with Google. Use the "Sign in with Google" button.'
       });
     }
 
-    // Проверка пароля
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
-      return res.status(401).json({ error: 'Неверные учётные данные' });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Пароль верный - генерируем и отправляем код на email
-    // Если email нет - используем phone как резервный вариант
-    const targetEmail = user.email || user.phone;
-    
-    if (!targetEmail) {
-      return res.status(400).json({ 
-        error: 'У пользователя нет email или телефона для отправки кода' 
+    if (shouldSkipEmailVerification) {
+      const authResult = await completeAuth(user.id, authMeta);
+      return res.json({
+        ...authResult,
+        message: 'Login successful',
+        requiresEmailVerification: false,
+        developmentBypass: true
       });
     }
 
-    // Генерация 6-значного кода для входа
+    const targetEmail = user.email || user.phone;
+
+    if (!targetEmail) {
+      return res.status(400).json({
+        error: 'User has no email or phone for verification code delivery'
+      });
+    }
+
     const buffer = crypto.randomBytes(3);
     const codeNumber = buffer.readUIntBE(0, 3) % 1000000;
     const verificationCode = codeNumber.toString().padStart(6, '0');
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Сохранение кода верификации для входа
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 минут
-
-    // Удаляем старые неиспользованные коды для этого email/phone
     await query(
       `DELETE FROM email_verifications 
        WHERE (email = $1 OR user_id = $2) AND purpose = 'login' AND used = FALSE`,
       [targetEmail, user.id]
     );
 
-    // Вставляем новый код
     await query(
       `INSERT INTO email_verifications
        (user_id, email, code, purpose, expires_at, created_at)
@@ -1267,14 +1271,12 @@ export const login = async (req, res) => {
       [user.id, targetEmail, verificationCode, 'login', expiresAt]
     );
 
-    // Создаём временный токен для шага верификации
     const loginTempToken = jwt.sign(
       { userId: user.id, step: 'login_verification', email: targetEmail },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '10m' }
     );
 
-    // Отправка email с кодом (в фоне, без await)
     if (user.email) {
       const { sendVerificationCode } = await import('../utils/emailService.js');
       await sendVerificationCode(user.email, verificationCode, 'login');
@@ -1283,7 +1285,7 @@ export const login = async (req, res) => {
     console.log('[Login] Code sent to', targetEmail);
 
     res.json({
-      message: 'Код отправлен',
+      message: 'Code sent',
       email: targetEmail,
       loginTempToken,
       requiresEmailVerification: true
@@ -1291,12 +1293,11 @@ export const login = async (req, res) => {
 
   } catch (error) {
     console.error('[Auth] Login error:', error);
-    const resolved = resolveEmailDeliveryError(error, 'Ошибка сервера при входе');
+    const resolved = resolveEmailDeliveryError(error, 'Login server error');
     res.status(resolved.status).json({ error: resolved.error });
   }
 };
 
-// ============================================================================
 // VERIFY LOGIN CODE - Шаг 2: Проверка кода и выдача токенов
 // ============================================================================
 export const verifyLoginCode = async (req, res) => {
